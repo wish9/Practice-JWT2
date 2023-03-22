@@ -1,3 +1,5 @@
+[블로그 포스팅 주소](https://velog.io/@wish17/%EC%BD%94%EB%93%9C%EC%8A%A4%ED%85%8C%EC%9D%B4%EC%B8%A0-%EB%B0%B1%EC%97%94%EB%93%9C-%EB%B6%80%ED%8A%B8%EC%BA%A0%ED%94%84-65%EC%9D%BC%EC%B0%A8-JWT-%EC%9D%B8%EC%A6%9DAuthentication)
+
 # JWT 인증(Authentication)
 
 ## 세션 기반 자격 증명 방식
