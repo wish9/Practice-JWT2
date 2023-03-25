@@ -12,11 +12,14 @@ import javax.validation.constraints.Pattern;
 
 public class MemberDto {
     @Getter
-    @AllArgsConstructor // TODO 테스트를 위해 추가됨
+    @AllArgsConstructor
     public static class Post {
         @NotBlank
         @Email
         private String email;
+
+        @NotBlank
+        private String password;
 
         @NotBlank(message = "이름은 공백이 아니어야 합니다.")
         private String name;
