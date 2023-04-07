@@ -1,5 +1,6 @@
 package com.codestates.order.service;
 
+import com.codestates.auth.CustomAuthorityUtils;
 import com.codestates.coffee.service.CoffeeService;
 import com.codestates.exception.BusinessLogicException;
 import com.codestates.exception.ExceptionCode;
@@ -9,26 +10,31 @@ import com.codestates.member.service.MemberService;
 import com.codestates.order.entity.Order;
 import com.codestates.order.repository.OrderRepository;
 import com.codestates.stamp.Stamp;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
+@Slf4j
 @Transactional
 @Service
 public class OrderService {
     private final MemberService memberService;
     private final OrderRepository orderRepository;
     private final CoffeeService coffeeService;
+    private final CustomAuthorityUtils authorityUtils;
     public OrderService(MemberService memberService,
                         OrderRepository orderRepository,
-                        CoffeeService coffeeService) {
+                        CoffeeService coffeeService, CustomAuthorityUtils authorityUtils) {
         this.memberService = memberService;
         this.orderRepository = orderRepository;
         this.coffeeService = coffeeService;
+        this.authorityUtils = authorityUtils;
     }
 
     public Order createOrder(Order order) {
@@ -39,6 +45,8 @@ public class OrderService {
         return savedOrder;
     }
 
+//    @PreAuthorize("authentication.name == @orderRepository.findById(#order.orderId).member.username or hasRole('ADMIN')") // 이렇게 하면 예외처리 힘듬
+    @PreAuthorize("@orderService.isOrderOwnerOrAdmin(#order.orderId, authentication.name)")
     public Order updateOrder(Order order) {
         Order findOrder = findVerifiedOrder(order.getOrderId());
 
@@ -47,6 +55,7 @@ public class OrderService {
         return orderRepository.save(findOrder);
     }
 
+    @PreAuthorize("@orderService.isOrderOwnerOrAdmin(#orderId, authentication.name)") // 사용자가 해당 주문의 주인인지 or 관리자인지 확인
     public Order findOrder(long orderId) {
         return findVerifiedOrder(orderId);
     }
@@ -56,6 +65,8 @@ public class OrderService {
                 Sort.by("orderId").descending()));
     }
 
+//    @PreAuthorize("authentication.name == @orderRepository.findById(#orderId).member.username or hasRole('ROLE_ADMIN')") // 이렇게 하면 예외처리 힘듬
+    @PreAuthorize("@orderService.isOrderOwnerOrAdmin(#orderId, authentication.name)")
     public void cancelOrder(long orderId) {
         Order findOrder = findVerifiedOrder(orderId);
         int step = findOrder.getOrderStatus().getStepNumber();
@@ -109,5 +120,26 @@ public class OrderService {
     private Order saveOrder(Order order) {
         return orderRepository.save(order);
     }
+
+    public boolean isOrderOwnerOrAdmin(long orderId, String username) { // 주문주인 or 관리자인지 확인
+        try {
+            Optional<Order> optionalOrder = orderRepository.findById(orderId);
+            if (optionalOrder.isPresent()) {
+                Order order = optionalOrder.get();
+                if (order.getMember() != null) {
+                    return order.getMember().getName().equals(username) || authorityUtils.isAdmin(username);
+                } else { // 주문한 사용자가 아닐 때
+                    log.error("본인 주문에만 접근 가능합니다.", orderId);
+                }
+            } else { // 주문이 없을 때 처리
+                log.error("존재하지 않는 주문입니다.", orderId);
+            }
+        } catch (Exception e) { // 데이터베이스 연결 문제 등의 예외 처리
+            log.error("주문 ID: {} 조회 중 오류가 발생했습니다. 오류: {}", orderId, e.getMessage());
+        }
+        return false;
+    }
+
+
 
 }

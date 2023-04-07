@@ -8,8 +8,11 @@ import com.codestates.auth.handler.MemberAuthenticationFailureHandler;
 import com.codestates.auth.handler.MemberAuthenticationSuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
@@ -24,6 +27,8 @@ import java.util.Arrays;
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
+@EnableWebSecurity // Spring Security를 사용하기 위한 필수 설정들을 자동으로 등록
+@EnableGlobalMethodSecurity(prePostEnabled = true) // 메소드 보안 기능 활성화
 public class SecurityConfiguration {
     private final JwtTokenizer jwtTokenizer;
     private final CustomAuthorityUtils authorityUtils;
@@ -46,7 +51,23 @@ public class SecurityConfiguration {
                 .apply(new CustomFilterConfigurer())   // Custom Configurer 적용
                 .and()
                 .authorizeHttpRequests(authorize -> authorize
-                        .anyRequest().permitAll()                // 모든 HTTP request 요청에 대해서 접근 허용
+//                        .anyRequest().permitAll()                // 모든 HTTP request 요청에 대해서 접근 허용
+                                .antMatchers(HttpMethod.POST, "/*/members").permitAll() // 누구나 접근 가능
+                                .antMatchers(HttpMethod.PATCH, "/*/members/**").hasRole("USER")  // USER권한 있눈 사용자만
+                                .antMatchers(HttpMethod.GET, "/*/members").hasRole("ADMIN")
+                                .antMatchers(HttpMethod.GET, "/*/members/**").hasAnyRole("USER", "ADMIN")
+                                .antMatchers(HttpMethod.DELETE, "/*/members/**").hasRole("USER")
+                                .antMatchers(HttpMethod.POST,"/*/coffees").hasRole("ADMIN")
+                                .antMatchers(HttpMethod.PATCH,"/*/coffees/**").hasRole("ADMIN")
+                                .antMatchers(HttpMethod.GET,"/*/coffees").hasAnyRole("USER", "ADMIN")
+                                .antMatchers(HttpMethod.GET,"/*/coffees/**").hasAnyRole("USER", "ADMIN")
+                                .antMatchers(HttpMethod.DELETE,"/*/coffees/**").hasRole("ADMIN")
+                                .antMatchers(HttpMethod.POST,"/*/orders").hasAnyRole("USER", "ADMIN")
+                                .antMatchers(HttpMethod.PATCH,"/*/orders/**").hasAnyRole("USER", "ADMIN")
+                                .antMatchers(HttpMethod.GET,"/*/orders").hasRole("ADMIN")
+                                .antMatchers(HttpMethod.GET,"/*/orders/**").hasAnyRole("USER", "ADMIN")
+                                .antMatchers(HttpMethod.DELETE,"/*/orders").hasAnyRole("USER", "ADMIN")
+                                .anyRequest().permitAll() // 위에 설정한 요청 외의 모든 요청 허용
                 );
         return http.build();
     }
