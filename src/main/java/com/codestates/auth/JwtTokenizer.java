@@ -61,13 +61,13 @@ public class JwtTokenizer { // JWT(JSON Web Token)를 생성하고 검증하는 
     }
 
     public Jws<Claims> getClaims(String jws, String base64EncodedSecretKey) {
-        Key key = getKeyFromBase64EncodedKey(base64EncodedSecretKey);
+        Key key = getKeyFromBase64EncodedKey(base64EncodedSecretKey); // base64로 인코딩된 Secret Key를 디코딩하여 Key 객체 얻기
 
-        Jws<Claims> claims = Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(jws);
-        return claims;
+        Jws<Claims> claims = Jwts.parserBuilder()// JwtParserBuilder 인스턴스를 생성해서  JWT 파싱에 필요한 설정을 지정
+                .setSigningKey(key) // 서명 검증에 사용할 시크릿키를 설정
+                .build() // JwtParser 객체 생성
+                .parseClaimsJws(jws); //  입력으로 받은 JWT 토큰 문자열을 파싱+key와 비교해 검증
+        return claims; // 클레임(토큰 데이터)을 포함하는 Jws<Claims> 객체를 반환
     }
 
     public void verifySignature(String jws, String base64EncodedSecretKey) {
