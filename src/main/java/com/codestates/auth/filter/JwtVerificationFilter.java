@@ -2,6 +2,8 @@ package com.codestates.auth.filter;
 
 import com.codestates.auth.CustomAuthorityUtils;
 import com.codestates.auth.JwtTokenizer;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.security.SignatureException; //주의 - org.security에 똑같은 SignatureException 있음
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -30,10 +32,23 @@ public class JwtVerificationFilter extends OncePerRequestFilter {  // OncePerReq
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        Map<String, Object> claims = verifyJws(request); // JWT 검증
-        setAuthenticationToContext(claims);      // SecurityContext에 검증된 정보 저장
+//        Map<String, Object> claims = verifyJws(request); // JWT 검증
+//        setAuthenticationToContext(claims);      // SecurityContext에 검증된 정보 저장
+//
+//        filterChain.doFilter(request, response); // 인증 끝났으니 다음 작업하도록 다음 필터 호출
 
-        filterChain.doFilter(request, response); // 인증 끝났으니 다음 작업하도록 다음 필터 호출
+        try { // 예외처리 로직 추가
+            Map<String, Object> claims = verifyJws(request);
+            setAuthenticationToContext(claims);
+        } catch (SignatureException se) { // 토큰 정보가 잘못되었을 경우 발생하는 Exception이 catch 되면
+            request.setAttribute("exception", se); // 해당 Exception을 HttpServletRequest의 애트리뷰트(Attribute)로 추가
+        } catch (ExpiredJwtException ee) {
+            request.setAttribute("exception", ee); // JWT가 만료된 경우 발생하는 Exception
+        } catch (Exception e) {
+            request.setAttribute("exception", e);
+        }
+
+        filterChain.doFilter(request, response);
     }
 
     // 특정 조건에 부합하면(true이면) 해당 Filter의 동작을 수행하지 않고 다음 Filter로 건너뛰도록 해주는 메서드인 OncePerRequestFilter의 shouldNotFilter()를 오버라이드

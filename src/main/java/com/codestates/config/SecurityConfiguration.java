@@ -1,5 +1,7 @@
 package com.codestates.config;
 
+import com.codestates.audit.MemberAccessDeniedHandler;
+import com.codestates.audit.MemberAuthenticationEntryPoint;
 import com.codestates.auth.CustomAuthorityUtils;
 import com.codestates.auth.JwtTokenizer;
 import com.codestates.auth.filter.JwtAuthenticationFilter;
@@ -48,6 +50,10 @@ public class SecurityConfiguration {
                 .and()
                 .formLogin().disable()   // 폼 로그인 방식을 비활성화
                 .httpBasic().disable()   // HTTP Basic 인증 방식을 비활성화
+                .exceptionHandling()
+                .authenticationEntryPoint(new MemberAuthenticationEntryPoint())  // 인증오류가 발생할 때 처리해주는 핸들러 호출
+                .accessDeniedHandler(new MemberAccessDeniedHandler())  // 인증에는 성공했지만 해당 리소스에 대한 권한이 없을 때 처리해주는 핸들러 호출
+                .and()
                 .apply(new CustomFilterConfigurer())   // Custom Configurer 적용
                 .and()
                 .authorizeHttpRequests(authorize -> authorize
