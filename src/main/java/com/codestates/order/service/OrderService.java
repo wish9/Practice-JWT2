@@ -1,6 +1,7 @@
 package com.codestates.order.service;
 
 import com.codestates.auth.CustomAuthorityUtils;
+import com.codestates.auth.MemberDetailsService;
 import com.codestates.coffee.service.CoffeeService;
 import com.codestates.exception.BusinessLogicException;
 import com.codestates.exception.ExceptionCode;
@@ -15,9 +16,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.Optional;
 
 @Slf4j
@@ -25,13 +29,17 @@ import java.util.Optional;
 @Service
 public class OrderService {
     private final MemberService memberService;
+    private final MemberDetailsService memberDetailsService;
     private final OrderRepository orderRepository;
     private final CoffeeService coffeeService;
     private final CustomAuthorityUtils authorityUtils;
+
+
     public OrderService(MemberService memberService,
-                        OrderRepository orderRepository,
+                        MemberDetailsService memberDetailsService, OrderRepository orderRepository,
                         CoffeeService coffeeService, CustomAuthorityUtils authorityUtils) {
         this.memberService = memberService;
+        this.memberDetailsService = memberDetailsService;
         this.orderRepository = orderRepository;
         this.coffeeService = coffeeService;
         this.authorityUtils = authorityUtils;
@@ -45,7 +53,7 @@ public class OrderService {
         return savedOrder;
     }
 
-//    @PreAuthorize("authentication.name == @orderRepository.findById(#order.orderId).member.username or hasRole('ADMIN')") // 이렇게 하면 예외처리 힘듬
+    //    @PreAuthorize("authentication.name == @orderRepository.findById(#order.orderId).member.username or hasRole('ADMIN')") // 이렇게 하면 예외처리 힘듬
     @PreAuthorize("@orderService.isOrderOwnerOrAdmin(#order.orderId, authentication.name)")
     public Order updateOrder(Order order) {
         Order findOrder = findVerifiedOrder(order.getOrderId());
@@ -65,7 +73,7 @@ public class OrderService {
                 Sort.by("orderId").descending()));
     }
 
-//    @PreAuthorize("authentication.name == @orderRepository.findById(#orderId).member.username or hasRole('ROLE_ADMIN')") // 이렇게 하면 예외처리 힘듬
+    //    @PreAuthorize("authentication.name == @orderRepository.findById(#orderId).member.username or hasRole('ROLE_ADMIN')") // 이렇게 하면 예외처리 힘듬
     @PreAuthorize("@orderService.isOrderOwnerOrAdmin(#orderId, authentication.name)")
     public void cancelOrder(long orderId) {
         Order findOrder = findVerifiedOrder(orderId);
@@ -104,7 +112,7 @@ public class OrderService {
         Stamp stamp = member.getStamp();
         stamp.setStampCount(
                 StampCalculator.calculateStampCount(stamp.getStampCount(),
-                                                            earnedStampCount));
+                        earnedStampCount));
         member.setStamp(stamp);
 
         memberService.updateMember(member);
@@ -127,7 +135,13 @@ public class OrderService {
             if (optionalOrder.isPresent()) {
                 Order order = optionalOrder.get();
                 if (order.getMember() != null) {
-                    return order.getMember().getName().equals(username) || authorityUtils.isAdmin(username);
+                    UserDetails userDetails = memberDetailsService.loadUserByUsername(username);
+                    Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
+
+                    boolean isAdmin = authorities.stream()
+                            .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+
+                    return order.getMember().getName().equals(username) || isAdmin;
                 } else { // 주문한 사용자가 아닐 때
                     log.error("본인 주문에만 접근 가능합니다.", orderId);
                 }
@@ -139,7 +153,4 @@ public class OrderService {
         }
         return false;
     }
-
-
-
 }

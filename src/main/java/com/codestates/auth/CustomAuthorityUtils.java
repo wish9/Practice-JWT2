@@ -6,7 +6,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -17,9 +16,6 @@ import java.util.stream.Collectors;
 public class CustomAuthorityUtils {
     @Value("${mail.address.admin}") // yml에 정의해 둔 관리자 이메일 가져오는거
     private String adminMailAddress;
-
-    @Autowired // 생성자 안만들어도 DI 자동으로 해줌
-    private UserDetailsService userDetailsService;
 
     private final List<GrantedAuthority> ADMIN_ROLES = AuthorityUtils.createAuthorityList("ROLE_ADMIN", "ROLE_USER");
     private final List<GrantedAuthority> USER_ROLES = AuthorityUtils.createAuthorityList("ROLE_USER");
@@ -51,11 +47,10 @@ public class CustomAuthorityUtils {
     }
 
     // 관리자 확인용
-    public boolean isAdmin(String username) {
-        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+    public boolean isAdmin(UserDetails userDetails) {
         Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
 
         return authorities.stream()
-                .anyMatch(authority -> authority.getAuthority().equals("ADMIN"));
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
     }
 }
